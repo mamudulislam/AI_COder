@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AI Coder: Your AI-Powered Development Assistant
 
 ![Project Logo Placeholder](public/placeholder-logo.png)
@@ -146,3 +147,6 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to see the a
 ---
 
 Feel free to contribute to this project by submitting issues or pull requests!
+=======
+
+>>>>>>> 7d7290e5b85c3536a1a7c111718ebf7fa2e06a5b
