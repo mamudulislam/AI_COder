@@ -17,6 +17,34 @@ class ChatStorage {
   private chats: { [chatId: string]: Chat } = {}
   private chatCounter = 1
 
+  constructor() {
+    this.loadChatsFromLocalStorage()
+  }
+
+  private loadChatsFromLocalStorage() {
+    try {
+      const storedChats = localStorage.getItem("chats")
+      if (storedChats) {
+        this.chats = JSON.parse(storedChats)
+        const chatIds = Object.keys(this.chats)
+        if (chatIds.length > 0) {
+          this.chatCounter =
+            Math.max(...chatIds.map((id) => parseInt(id.split("_")[1] || "0"))) + 1
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load chats from local storage:", error)
+    }
+  }
+
+  private saveChatsToLocalStorage() {
+    try {
+      localStorage.setItem("chats", JSON.stringify(this.chats))
+    } catch (error) {
+      console.error("Failed to save chats to local storage:", error)
+    }
+  }
+
   getAllChats(): Chat[] {
     return Object.values(this.chats).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
   }
@@ -43,6 +71,7 @@ class ChatStorage {
     }
 
     this.chats[newChat.id] = newChat
+    this.saveChatsToLocalStorage()
     return newChat
   }
 
@@ -51,12 +80,14 @@ class ChatStorage {
     if (!chat) return null
 
     Object.assign(chat, updates, { updatedAt: new Date() })
+    this.saveChatsToLocalStorage()
     return chat
   }
 
   deleteChat(chatId: string): boolean {
     if (!this.chats[chatId]) return false
     delete this.chats[chatId]
+    this.saveChatsToLocalStorage()
     return true
   }
 
