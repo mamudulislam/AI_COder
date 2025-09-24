@@ -9,15 +9,24 @@ interface CodeEditorProps {
   filename: string
   content: string
   onChange: (content: string) => void
+  onSelect?: (selectedText: string, selectionStart: number, selectionEnd: number) => void
 }
 
-export function CodeEditor({ filename, content, onChange }: CodeEditorProps) {
+export function CodeEditor({ filename, content, onChange, onSelect }: CodeEditorProps) {
   const [lineCount, setLineCount] = useState(1)
 
   useEffect(() => {
     const lines = content.split("\n").length
     setLineCount(lines)
   }, [content])
+
+  const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    if (onSelect) {
+      const textarea = e.currentTarget
+      const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd)
+      onSelect(selectedText, textarea.selectionStart, textarea.selectionEnd)
+    }
+  }
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(content)
@@ -84,6 +93,7 @@ export function CodeEditor({ filename, content, onChange }: CodeEditorProps) {
           <textarea
             value={content}
             onChange={(e) => onChange(e.target.value)}
+            onSelect={handleSelect}
             className="w-full h-full p-4 bg-transparent text-foreground font-mono text-sm resize-none border-none outline-none leading-6"
             placeholder="Start coding or ask AI to generate code..."
             spellCheck={false}

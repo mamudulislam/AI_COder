@@ -30,6 +30,24 @@ export function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }`,
   })
+  const [selectedCode, setSelectedCode] = useState("")
+  const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null)
+
+  const handleCodeSelect = (text: string, start: number, end: number) => {
+    setSelectedCode(text)
+    setSelectionRange({ start, end })
+  }
+
+  const handleRefactor = async (prompt: string) => {
+    if (!selectedCode) return
+    // For now, just log the refactor request. Later, integrate with AI.
+    console.log("Refactor request:", prompt, "for code:", selectedCode)
+    // Here you would typically send this to your AI chat function
+    // const result = await sendMessage(currentChat.id, `Refactor this code: ${selectedCode}. ${prompt}`)
+    // if (result?.generatedCode) {
+    //   // Handle the AI's refactored code, e.g., show a diff or replace
+    // }
+  }
 
   const updateFileContent = (filename: string, content: string) => {
     setFiles((prev) => ({
@@ -67,6 +85,7 @@ export function capitalize(str: string): string {
               filename={activeFile}
               content={files[activeFile] || ""}
               onChange={(content) => updateFileContent(activeFile, content)}
+              onSelect={handleCodeSelect}
             />
           </ResizablePanel>
 
@@ -77,6 +96,8 @@ export function capitalize(str: string): string {
               onCodeGenerated={(code) => updateFileContent(activeFile, code)}
               currentFile={activeFile}
               currentCode={files[activeFile] || ""}
+              selectedCode={selectedCode}
+              onRefactor={handleRefactor}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
