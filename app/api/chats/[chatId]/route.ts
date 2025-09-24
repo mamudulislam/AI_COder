@@ -4,7 +4,7 @@ import { chatStorage } from "@/lib/chat-storage"
 export async function GET(request: NextRequest, { params }: { params: { chatId: string } }) {
   try {
     const { chatId } = params
-    const chat = chatStorage.getChat(chatId)
+    const chat = await chatStorage.getChat(chatId)
 
     if (!chat) {
       return NextResponse.json({ error: "Chat not found" }, { status: 404 })
@@ -22,7 +22,7 @@ export async function PUT(request: NextRequest, { params }: { params: { chatId: 
     const { chatId } = params
     const { title } = await request.json()
 
-    const updatedChat = chatStorage.updateChat(chatId, { title })
+    const updatedChat = await chatStorage.updateChat(chatId, { title })
     if (!updatedChat) {
       return NextResponse.json({ error: "Chat not found" }, { status: 404 })
     }
@@ -37,7 +37,7 @@ export async function PUT(request: NextRequest, { params }: { params: { chatId: 
 export async function DELETE(request: NextRequest, { params }: { params: { chatId: string } }) {
   try {
     const { chatId } = params
-    const deleted = chatStorage.deleteChat(chatId)
+    const deleted = await chatStorage.deleteChat(chatId)
 
     if (!deleted) {
       return NextResponse.json({ error: "Chat not found" }, { status: 404 })

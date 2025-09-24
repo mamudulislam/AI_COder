@@ -3,7 +3,7 @@ import { chatStorage } from "@/lib/chat-storage"
 
 export async function GET() {
   try {
-    const chats = chatStorage.getAllChats()
+    const chats = await chatStorage.getAllChats()
     return NextResponse.json({ chats })
   } catch (error) {
     console.error("Error fetching chats:", error)
@@ -14,7 +14,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { title } = await request.json()
-    const newChat = chatStorage.createChat(title)
+    const newChat = await chatStorage.createChat(title)
     return NextResponse.json({ chat: newChat }, { status: 201 })
   } catch (error) {
     console.error("Error creating chat:", error)

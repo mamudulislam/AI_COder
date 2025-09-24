@@ -1,5 +1,5 @@
 import { openai } from "@ai-sdk/openai"
-import { convertToModelMessages, streamText, type UIMessage } from "ai"
+import { streamText, type UIMessage } from "ai"
 import { chatStorage } from "@/lib/chat-storage"
 
 export const maxDuration = 30
@@ -17,27 +17,26 @@ export async function POST(req: Request) {
 
     // Validate message format
     for (const msg of messages) {
-      if (!msg.role || !msg.content) {
+      if (!msg.role || typeof msg.content !== 'string') {
         console.error("[v0] Invalid message format:", msg)
         return new Response("Invalid message format", { status: 400 })
       }
     }
 
-    // Convert our message format to AI SDK format
-    const modelMessages = convertToModelMessages(messages)
-    console.log("[v0] Converted model messages:", modelMessages)
-
     const result = streamText({
       model: openai("gpt-4o-mini"), // Use gpt-4o-mini for better performance and cost
-      messages: modelMessages,
-      system: `You are an expert AI coding assistant. You help users with:
-- Writing, debugging, and explaining code
-- Code reviews and optimization suggestions
-- Architecture and design patterns
-- Best practices and conventions
-- Problem-solving and algorithm design
+      messages,
+      system: `You are an expert AI coding assistant, designed to provide helpful and high-quality code. Your goal is to assist users by writing, debugging, and explaining code, offering code reviews, and suggesting optimizations.
 
-Always provide clear, well-commented code examples and explain your reasoning.`,
+When generating code, you must adhere to the following principles:
+- **Modern Standards:** Your code should follow modern best practices and the latest language standards.
+- **Clean and Readable:** Write code that is easy to understand, well-structured, and maintainable. Use meaningful variable names and a consistent style.
+- **Performance and Security:** Keep performance and security in mind. Avoid common pitfalls and write efficient code.
+- **Well-Commented:** Provide clear and concise comments for complex logic to explain the 'why', not just the 'what'.
+- **Complete Solutions:** Offer complete and working code examples whenever possible.
+- **Clarity First:** If a user's request is ambiguous, ask for clarification before generating code to ensure you meet their needs.
+
+Always explain your reasoning and the trade-offs of your proposed solutions.`,
       temperature: 0.7,
       maxTokens: 2000,
     })
@@ -50,7 +49,7 @@ Always provide clear, well-commented code examples and explain your reasoning.`,
           // Add user message
           const userMessage = messages[messages.length - 1]
           if (userMessage?.content) {
-            chatStorage.addMessage(chatId, {
+            await chatStorage.addMessage(chatId, {
               type: "user",
               content:
                 typeof userMessage.content === "string" ? userMessage.content : JSON.stringify(userMessage.content),
@@ -58,7 +57,7 @@ Always provide clear, well-commented code examples and explain your reasoning.`,
           }
 
           // Add assistant response
-          chatStorage.addMessage(chatId, {
+          await chatStorage.addMessage(chatId, {
             type: "assistant",
             content: text,
           })
