@@ -10,7 +10,7 @@ export async function POST(request: NextRequest, { params }: { params: { chatId:
       return NextResponse.json({ error: "Content and type are required" }, { status: 400 })
     }
 
-    const message = chatStorage.addMessage(chatId, { content, type })
+    const message = await chatStorage.addMessage(chatId, { content, type })
     if (!message) {
       return NextResponse.json({ error: "Chat not found" }, { status: 404 })
     }
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest, { params }: { params: { chatId:
 export async function GET(request: NextRequest, { params }: { params: { chatId: string } }) {
   try {
     const { chatId } = params
-    const chat = chatStorage.getChat(chatId)
+    const chat = await chatStorage.getChat(chatId)
 
     if (!chat) {
       return NextResponse.json({ error: "Chat not found" }, { status: 404 })

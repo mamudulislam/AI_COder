@@ -18,6 +18,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ chat: newChat }, { status: 201 })
   } catch (error) {
     console.error("Error creating chat:", error)
-    return NextResponse.json({ error: "Failed to create chat" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to create chat", details: error }, { status: 500 })
   }
 }

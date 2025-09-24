@@ -22,28 +22,55 @@ class ChatStorage {
   }
 
   async getAllChats(): Promise<Chat[]> {
-    const { data, error } = await supabase
+    const { data: chatsData, error: chatsError } = await supabase
       .from('chats')
       .select('id, title, created_at, updated_at')
       .order('updated_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching all chats:', error);
+    if (chatsError) {
+      console.error('Error fetching all chats:', chatsError);
       return [];
     }
 
-    // For each chat, fetch its messages
-    const chatsWithMessages = await Promise.all(
-      data.map(async (chat) => {
-        const messages = await this.getMessagesForChat(chat.id);
-        return {
-          ...chat,
-          created_at: new Date(chat.created_at),
-          updated_at: new Date(chat.updated_at),
-          messages,
-        };
-      })
-    );
+    if (!chatsData) {
+      return [];
+    }
+
+    const chatIds = chatsData.map((chat) => chat.id);
+    const { data: messagesData, error: messagesError } = await supabase
+      .from('messages')
+      .select('id, type, content, created_at, chat_id')
+      .in('chat_id', chatIds)
+      .order('created_at', { ascending: true });
+
+    if (messagesError) {
+      console.error('Error fetching messages for chats:', messagesError);
+      // Return chats without messages if messages fail to load
+      return chatsData.map(chat => ({
+        ...chat,
+        created_at: new Date(chat.created_at),
+        updated_at: new Date(chat.updated_at),
+        messages: [],
+      }));
+    }
+
+    const messagesByChatId = messagesData.reduce((acc, message) => {
+      if (!acc[message.chat_id]) {
+        acc[message.chat_id] = [];
+      }
+      acc[message.chat_id].push({
+        ...message,
+        created_at: new Date(message.created_at),
+      });
+      return acc;
+    }, {} as Record<string, Message[]>);
+
+    const chatsWithMessages = chatsData.map((chat) => ({
+      ...chat,
+      created_at: new Date(chat.created_at),
+      updated_at: new Date(chat.updated_at),
+      messages: messagesByChatId[chat.id] || [],
+    }));
 
     return chatsWithMessages;
   }
@@ -112,7 +139,7 @@ class ChatStorage {
     // Add initial assistant message
     const initialAssistantMessageContent =
       "Hello! I'm your AI coding assistant. I can help you generate, modify, and explain code. What would you like to work on?";
-    await this.addMessage(newChatId, {
+    const initialMessage = await this.addMessage(newChatId, {
       type: 'assistant',
       content: initialAssistantMessageContent,
     });
@@ -121,14 +148,7 @@ class ChatStorage {
       ...chatData,
       created_at: new Date(chatData.created_at),
       updated_at: new Date(chatData.updated_at),
-      messages: [
-        {
-          id: uuidv4(), // Generate a new ID for the message
-          type: 'assistant',
-          content: initialAssistantMessageContent,
-          created_at: now,
-        },
-      ],
+      messages: initialMessage ? [initialMessage] : [],
     };
   }
 
@@ -136,7 +156,7 @@ class ChatStorage {
     const now = new Date();
     const { data: updatedChatData, error } = await supabase
       .from('chats')
-      .update({ ...updates, updated_at: now.toISOString() })
+      .update({ updated_at: now.toISOString() })
       .eq('id', chatId)
       .select()
       .single();
