@@ -1,11 +1,11 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
@@ -15,7 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Send, Bot, User, Sparkles, Plus, Trash2, Edit2 } from "lucide-react"
+import { Send, Bot, User, Sparkles, Plus, Trash2, Edit2, CornerDownLeft } from "lucide-react"
 import { useChats } from "@/hooks/use-chats"
 
 interface Message {
@@ -41,6 +41,7 @@ export function ChatPanel({ onCodeGenerated, currentFile, currentCode, selectedC
   const [newTitle, setNewTitle] = useState("")
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [chatToDelete, setChatToDelete] = useState<string | null>(null)
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (chats.length > 0 && !currentChat) {
@@ -48,7 +49,13 @@ export function ChatPanel({ onCodeGenerated, currentFile, currentCode, selectedC
     } else if (chats.length === 0 && !isLoading) {
       createChat("New Chat")
     }
-  }, [chats, currentChat, isLoading])
+  }, [chats, currentChat, isLoading, loadChat, createChat])
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: "smooth" })
+    }
+  }, [currentChat?.messages, isLoading])
 
   const handleSend = async () => {
     if (!input.trim() || !currentChat) return
@@ -66,14 +73,12 @@ export function ChatPanel({ onCodeGenerated, currentFile, currentCode, selectedC
   }
 
   const confirmDeleteChat = (chatId: string, e: React.MouseEvent) => {
-    console.log("confirmDeleteChat called with chatId:", chatId)
     e.stopPropagation()
     setChatToDelete(chatId)
     setIsDeleteDialogOpen(true)
   }
 
   const handleDeleteChat = () => {
-    console.log("handleDeleteChat called. chatToDelete:", chatToDelete)
     if (chatToDelete) {
       deleteChat(chatToDelete)
       setChatToDelete(null)
@@ -82,14 +87,12 @@ export function ChatPanel({ onCodeGenerated, currentFile, currentCode, selectedC
   }
 
   const handleEditTitle = (chatId: string, currentTitle: string, e: React.MouseEvent) => {
-    console.log("handleEditTitle called with chatId:", chatId)
     e.stopPropagation()
     setEditingTitle(chatId)
     setNewTitle(currentTitle)
   }
 
   const handleSaveTitle = (chatId: string) => {
-    console.log("handleSaveTitle called with chatId:", chatId, "and newTitle:", newTitle)
     if (newTitle.trim()) {
       updateChat(chatId, newTitle.trim())
     }
@@ -108,30 +111,28 @@ export function ChatPanel({ onCodeGenerated, currentFile, currentCode, selectedC
   return (
     <>
       <div className="h-full flex flex-col bg-card border-l border-border">
-        <div className="h-10 border-b border-border bg-card flex items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <Bot className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">AI Assistant</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="text-xs">
-              <Sparkles className="h-3 w-3 mr-1" />
-              Active
+        {/* Chat History Header */}
+        <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-muted/20">
+          <div className="flex items-center gap-3">
+            <div className="font-medium text-sm">Chat History</div>
+            <Badge variant="outline" className="text-xs font-normal">
+              {chats.length} conversation{chats.length === 1 ? "" : "s"}
             </Badge>
-            <Button size="sm" variant="ghost" onClick={handleNewChat}>
-              <Plus className="h-3 w-3" />
-            </Button>
           </div>
+          <Button size="sm" variant="ghost" onClick={handleNewChat} className="h-8 w-8 p-0">
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
 
-        <div className="h-40 border-b border-border bg-muted/30">
+        {/* Chat History List */}
+        <div className="h-48 border-b border-border">
           <ScrollArea className="h-full">
             <div className="p-2 space-y-1">
-              {chats.map((chat) => (
+              {chats.filter(chat => chat.id === currentChat?.id).map((chat) => (
                 <div
                   key={chat.id}
-                  className={`flex items-center justify-between gap-2 p-2 rounded cursor-pointer hover:bg-muted/50 ${
-                    currentChat?.id === chat.id ? "bg-muted" : ""
+                  className={`group flex items-center justify-between gap-2 p-2 rounded-md cursor-pointer transition-colors ${
+                    currentChat?.id === chat.id ? "bg-muted" : "hover:bg-muted/50"
                   }`}
                   onClick={() => loadChat(chat.id)}
                 >
@@ -145,29 +146,29 @@ export function ChatPanel({ onCodeGenerated, currentFile, currentCode, selectedC
                           if (e.key === "Enter") handleSaveTitle(chat.id)
                           if (e.key === "Escape") setEditingTitle(null)
                         }}
-                        className="h-6 text-xs"
+                        className="h-7 text-xs"
                         autoFocus
                       />
                     ) : (
-                      <span className="text-xs truncate block">{chat.title}</span>
+                      <span className="text-xs font-medium truncate block">{chat.title}</span>
                     )}
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="ghost"
-                      className="h-5 w-5 p-0"
+                      className="h-6 w-6"
                       onClick={(e) => handleEditTitle(chat.id, chat.title, e)}
                     >
-                      <Edit2 className="h-3 w-3" />
+                      <Edit2 className="h-3.5 w-3.5" />
                     </Button>
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="ghost"
-                      className="h-5 w-5 p-0 text-destructive hover:text-destructive"
+                      className="h-6 w-6 text-destructive hover:text-destructive"
                       onClick={(e) => confirmDeleteChat(chat.id, e)}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
@@ -176,90 +177,107 @@ export function ChatPanel({ onCodeGenerated, currentFile, currentCode, selectedC
           </ScrollArea>
         </div>
 
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4">
-            {currentChat?.messages.map((message) => (
-              <div key={message.id} className="flex gap-3">
-                <div className="flex-shrink-0">
-                  {message.type === "user" ? (
-                    <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                      <User className="h-3 w-3 text-primary-foreground" />
+        {/* Main Chat Area */}
+        <div className="flex-1 flex flex-col">
+          <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+            <div className="space-y-6">
+              {currentChat?.messages.map((message, index) => (
+                <div key={message.id} className={`flex gap-3 ${
+                  message.type === "user" ? "justify-end" : ""
+                }`}>
+                  {message.type === "assistant" && (
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Bot className="h-4 w-4 text-primary" />
                     </div>
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center">
-                      <Bot className="h-3 w-3 text-secondary-foreground" />
+                  )}
+                  <div className={`max-w-[75%] ${
+                    message.type === "user" ? "text-right" : ""
+                  }`}>
+                    <Card className={`inline-block rounded-2xl ${
+                      message.type === "user" ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none"
+                    }`}>
+                      <CardContent className="p-3 text-sm">
+                        <p className="whitespace-pre-wrap">{message.content}</p>
+                      </CardContent>
+                    </Card>
+                    <p className="text-xs text-muted-foreground mt-1.5 px-3">{new Date(message.timestamp).toLocaleTimeString()}</p>
+                  </div>
+                  {message.type === "user" && (
+                     <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                      <User className="h-4 w-4 text-secondary-foreground" />
                     </div>
                   )}
                 </div>
-                <div className="flex-1">
-                  <Card className="p-3">
-                    <p className="text-sm text-foreground whitespace-pre-wrap">{message.content}</p>
-                  </Card>
-                  <p className="text-xs text-muted-foreground mt-1">{new Date(message.timestamp).toLocaleTimeString()}</p>
-                </div>
-              </div>
-            ))}
+              ))}
 
-            {isLoading && (
-              <div className="flex gap-3">
-                <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center">
-                  <Bot className="h-3 w-3 text-secondary-foreground" />
-                </div>
-                <Card className="p-3 flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse delay-100" />
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse delay-200" />
-                    <span className="text-sm text-muted-foreground ml-2">Thinking...</span>
+              {isLoading && (
+                <div className="flex gap-3">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Bot className="h-4 w-4 text-primary" />
                   </div>
-                </Card>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+                  <Card className="inline-block rounded-2xl bg-muted rounded-bl-none">
+                     <CardContent className="p-3 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse delay-100" />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse delay-200" />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
 
-        <div className="p-4 border-t border-border space-y-3">
-          <div className="flex flex-wrap gap-1">
-            {quickPrompts.map((prompt) => (
-              <Button
-                key={prompt}
-                variant="outline"
-                size="sm"
-                className="text-xs h-6 bg-transparent"
-                onClick={() => setInput(prompt)}
-              >
-                {prompt}
-              </Button>
-            ))}
-          </div>
+          {/* Chat Input Area */}
+          <div className="p-4 border-t border-border bg-background">
+            <div className="flex flex-wrap gap-2 mb-3">
+              {quickPrompts.map((prompt) => (
+                <Button
+                  key={prompt}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-7 bg-transparent"
+                  onClick={() => setInput(prompt)}
+                >
+                  {prompt}
+                </Button>
+              ))}
+            </div>
 
-          <div className="flex gap-2">
-            {selectedCode && (
-              <Button
-                onClick={() => onRefactor("Refactor this code for better readability.")}
+            <div className="relative">
+              <Input
+                placeholder="Ask AI to generate or modify code..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSend()
+                  }
+                }}
                 disabled={isLoading}
-                variant="outline"
-                size="sm"
-              >
-                Refactor with AI
-              </Button>
-            )}
-            <Input
-              placeholder="Ask AI to generate or modify code..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSend()
-                }
-              }}
-              disabled={isLoading}
-              className="flex-1"
-            />
-            <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
-              <Send className="h-4 w-4" />
-            </Button>
+                className="flex-1 pr-20 h-11 rounded-full pl-5"
+              />
+              <div className="absolute top-1/2 right-3 -translate-y-1/2 flex items-center gap-1">
+                 {selectedCode && (
+                  <Button
+                    onClick={() => onRefactor("Refactor this code for better readability.")}
+                    disabled={isLoading}
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    Refactor
+                  </Button>
+                )}
+                <Button onClick={handleSend} disabled={isLoading || !input.trim()} size="icon" className="rounded-full w-8 h-8">
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5 pl-2">
+              <CornerDownLeft className="h-3 w-3"/>
+              <span className="font-semibold">Enter</span> to send, <span className="font-semibold">Shift + Enter</span> for new line.
+            </p>
           </div>
         </div>
       </div>

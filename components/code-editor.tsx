@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Copy, Download } from "lucide-react"
+import { Copy, Download, Check } from "lucide-react"
+import Editor from "@monaco-editor/react"
+import { useTheme } from "next-themes"
 
 interface CodeEditorProps {
   filename: string
@@ -13,23 +15,13 @@ interface CodeEditorProps {
 }
 
 export function CodeEditor({ filename, content, onChange, onSelect }: CodeEditorProps) {
-  const [lineCount, setLineCount] = useState(1)
-
-  useEffect(() => {
-    const lines = content.split("\n").length
-    setLineCount(lines)
-  }, [content])
-
-  const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-    if (onSelect) {
-      const textarea = e.currentTarget
-      const selectedText = textarea.value.substring(textarea.selectionStart, textarea.selectionEnd)
-      onSelect(selectedText, textarea.selectionStart, textarea.selectionEnd)
-    }
-  }
+  const { theme } = useTheme()
+  const [isCopied, setIsCopied] = useState(false)
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(content)
+    setIsCopied(true)
+    setTimeout(() => setIsCopied(false), 2000)
   }
 
   const downloadFile = () => {
@@ -45,60 +37,70 @@ export function CodeEditor({ filename, content, onChange, onSelect }: CodeEditor
   const getLanguage = (filename: string) => {
     const ext = filename.split(".").pop()
     switch (ext) {
-      case "tsx":
-      case "jsx":
-        return "React"
-      case "ts":
-        return "TypeScript"
-      case "js":
-        return "JavaScript"
-      case "css":
-        return "CSS"
-      case "html":
-        return "HTML"
-      default:
-        return "Text"
+      case "tsx": return "typescript"
+      case "jsx": return "javascript"
+      case "ts": return "typescript"
+      case "js": return "javascript"
+      case "css": return "css"
+      case "html": return "html"
+      case "json": return "json"
+      case "md": return "markdown"
+      default: return "plaintext"
     }
   }
 
   return (
     <div className="h-full flex flex-col bg-background">
-      <div className="h-10 border-b border-border bg-card flex items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-foreground">{filename}</span>
-          <Badge variant="outline" className="text-xs">
+      <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-muted/20">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-semibold text-foreground">{filename}</span>
+          <Badge variant="outline" className="text-xs font-normal">
             {getLanguage(filename)}
           </Badge>
         </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={copyToClipboard}>
-            <Copy className="h-3 w-3" />
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={copyToClipboard} className="h-8 w-8 p-0">
+            {isCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
           </Button>
-          <Button variant="ghost" size="sm" onClick={downloadFile}>
-            <Download className="h-3 w-3" />
+          <Button variant="ghost" size="sm" onClick={downloadFile} className="h-8 w-8 p-0">
+            <Download className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 flex">
-        <div className="w-12 bg-muted/30 border-r border-border flex flex-col items-center py-2 text-xs text-muted-foreground font-mono">
-          {Array.from({ length: lineCount }, (_, i) => (
-            <div key={i + 1} className="h-6 flex items-center">
-              {i + 1}
-            </div>
-          ))}
-        </div>
-
-        <div className="flex-1 relative">
-          <textarea
-            value={content}
-            onChange={(e) => onChange(e.target.value)}
-            onSelect={handleSelect}
-            className="w-full h-full p-4 bg-transparent text-foreground font-mono text-sm resize-none border-none outline-none leading-6"
-            placeholder="Start coding or ask AI to generate code..."
-            spellCheck={false}
-          />
-        </div>
+      <div className="flex-1 relative">
+        <Editor
+          height="100%"
+          language={getLanguage(filename)}
+          value={content}
+          onChange={(value) => onChange(value || "")}
+          theme={theme === 'dark' ? 'vs-dark' : 'light'}
+          options={{
+            minimap: { enabled: false },
+            fontSize: 14,
+            wordWrap: "on",
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            tabSize: 2,
+            insertSpaces: true,
+          }}
+          onMount={(editor, monaco) => {
+            editor.onMouseUp(() => {
+              if (onSelect) {
+                const selection = editor.getSelection()
+                if (selection && !selection.isEmpty()) {
+                  const model = editor.getModel()
+                  if (model) {
+                    const value = model.getValueInRange(selection)
+                    const start = model.getOffsetAt(selection.getStartPosition())
+                    const end = model.getOffsetAt(selection.getEndPosition())
+                    onSelect(value, start, end)
+                  }
+                }
+              }
+            })
+          }}
+        />
       </div>
     </div>
   )
